@@ -1,6 +1,6 @@
 # 📰 Live News Scraper & Summarizer  
 
-## 🚀 Overview  
+🚀 Demo: [https://newscraper.streamlit.app](https://newscraper.streamlit.app)
 
 **Live News Scraper & Summarizer** is an AI-powered tool that:  
 ✔️ Scrapes real-time news from **Times of India**.  
@@ -26,7 +26,7 @@
 
 ### 🔹 1️⃣ Clone the Repository  
 
-- git clone [https://github.com/k-pundareekaksh/flipr2025.git](https://github.com/k-pundareekaksh/flipr2025.git)
+- git clone [https://github.com/k-pundareekaksh/newscraper.git](https://github.com/k-pundareekaksh/newscraper.git)
 
 ### 🔹 2️⃣ Install Dependencies
 

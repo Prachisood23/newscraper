@@ -1,72 +1,71 @@
+#ppp
+
 import json
 import time
 import random
 import sys
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
+import requests
+from bs4 import BeautifulSoup
 
 import os
 sys.stdout.reconfigure(encoding='utf-8')
 
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+}
+
 def scrape_times_of_india(url, max_articles=3):
-    options = Options()
-    options.add_argument("--headless")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-    driver.get(url)
-
-    WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "a")))
+    response = requests.get(url, headers=HEADERS)
+    
+    if response.status_code != 200:
+        print(f"❌ Failed to fetch {url}. Status Code: {response.status_code}")
+        return []
+    
+    soup = BeautifulSoup(response.text, "html.parser")
 
     articles = []
-    article_links = driver.find_elements(By.XPATH, '//a[contains(@href, "/articleshow/")]')
+    article_links = soup.find_all("a", href=True)
 
     article_urls = set()
     for link in article_links:
-        href = link.get_attribute("href")
-        if href and "/articleshow/" in href:
-            article_urls.add(href)
+        href = link["href"]
+        if "/articleshow/" in href:
+            full_url = href if href.startswith("http") else f"https://timesofindia.indiatimes.com{href}"
+            article_urls.add(full_url)
         if len(article_urls) >= max_articles:
             break
 
     print(f"Found {len(article_urls)} articles on {url}.")
 
     for article_url in article_urls:
-        driver.get(article_url)
-
         try:
-            title = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.TAG_NAME, "h1"))).text
-        except:
-            title = "Title Not Found"
+            article_response = requests.get(article_url, headers=HEADERS)
+            if article_response.status_code != 200:
+                print(f"❌ Failed to fetch {article_url}. Status Code: {article_response.status_code}")
+                continue
 
-        try:
-            content_element = WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.XPATH, '//div[contains(@class, "_s30J")]'))
-            )
-            content = content_element.text.replace("\n", " ")
-        except:
-            content = "Content Not Found"
+            article_soup = BeautifulSoup(article_response.text, "html.parser")
 
-        articles.append({
-            "title": title,
-            "url": article_url,
-            "content": content
-        })
+            title_element = article_soup.find("h1")
+            title = title_element.get_text(strip=True) if title_element else "Title Not Found"
 
-        time.sleep(random.uniform(1, 3))
+            content_element = article_soup.find("div", class_="_s30J")
+            content = content_element.get_text(" ", strip=True) if content_element else "Content Not Found"
 
-    driver.quit()
+            articles.append({
+                "title": title,
+                "url": article_url,
+                "content": content
+            })
+
+            time.sleep(random.uniform(1, 3))  # Mimic human behavior
+
+        except Exception as e:
+            print(f"❌ Error scraping {article_url}: {e}")
+
     return articles
 
 if __name__ == "__main__":
-    
     try:
         with open("urls.json", "r", encoding="utf-8") as f:
             urls = json.load(f)
@@ -88,3 +87,5 @@ if __name__ == "__main__":
         print("✅ Scraping completed. Data saved to 'toi_articles.json'.")
     else:
         print("❌ No articles found.")
+
+
